@@ -1,0 +1,248 @@
+:root {
+  --main: #32506e;
+  --brighter: #276db4;
+  --highlight: #cbd8e6;
+  --darkgray: #222222;
+  --gray: #cccccc;
+  --lightgray: #ebebeb;
+  --menu: #ffcc00;
+}
+
+.book .book header h1 {
+  opacity: 1;
+  text-align: left;
+}
+
+#header .title {
+  margin: 0EM;
+  padding-left: 20px;
+  padding-bottom: 0em;
+  color: var(--main);
+  border-radius: 25px 25px 0px 0px;
+  border-bottom: 0px;
+  background: var(--gray);
+  font-size: 30pt;
+  line-height: 65px;
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+#header .subtitle em {
+  font-style: normal;
+}
+
+#header .author {
+  margin: 0;
+  padding-left: 20px;
+  padding-bottom: 0em;
+  color: var(--gray);
+  background: var(--main);
+  font-size: 18pt;
+  font-style: normal;
+  font-weight: normal;
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+#header .author em {
+  font-style: normal;
+}
+
+#header address {
+  font-style: normal;
+  border-radius: 0px 0px 25px 25px;
+  padding-left: 20px;
+  color: var(--gray);
+  background: var(--main);
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+.book.font-family-0 {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.book.font-family-1 {
+  font-family: 'Merriweather', Georgia, serif;
+}
+
+.book-body p.caption {
+  color: var(--darkgray);
+  background-color: var(--lightgray);
+  padding-left: 20px;
+  font-size: 12pt;
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal code,
+.book .book-body .page-wrapper .page-inner section.normal pre {
+  font-family: 'Hack', 'Source Code Pro', 'Courier New', 'Courier', monospace;
+}
+
+h1,
+h2 {
+  border-bottom: 2px solid var(--main);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--main);
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal a {
+  color: var(--brighter);
+}
+
+dt {
+  color: var(--main);
+}
+
+dd {
+  margin-bottom: 12px;
+  margin-left: 20px;
+  padding-left: 20px;
+}
+
+.book-body table {
+  background: var(--lightgray);
+  border: 0px;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal table td,
+.book .book-body .page-wrapper .page-inner section.normal table th {
+  color: var(--darkgray);
+  border: 1px;
+  font-size: 11pt;
+  height: 15px;
+  padding: 0px 5px 0px 5px;
+  cellpadding="0";
+  cellspacing="0";
+  text-shadow: none;
+}
+
+.book.color-theme-2 .book-body .page-wrapper .page-inner section.normal table td {
+  color: var(--lightgray);
+}
+
+.book.color-theme-2 .book-body .page-wrapper .page-inner section.normal table th {
+  color: var(--darkgray);
+}
+
+.book .book-body .page-wrapper .page-inner section.normal th {
+  background: var(--highlight);
+  font-weight: bold;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal blockquote {
+  quotes: none;
+  text-shadow: none;
+  background: var(--highlight);
+  padding: 7px 20px 1px 20px;
+  color: #000000;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  border-left: 0px;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal pre {
+  background: var(--lightgray);
+  padding: 5px 10px 5px 10px;
+  margin: 0px 0px 5px 0px;
+}
+
+div.sourceCode {
+  background-color: var(--lightgray);
+}
+
+ol {
+  -webkit-padding-start: 0px;
+}
+
+.book .book-summary {
+  background-color: var(--main);
+}
+
+.book .book-summary ul.summary li a {
+  padding: 5px 5px 5px 5px;
+  color: var(--lightgray);
+}
+
+.book .book-summary ul.summary li.active > a {
+  color: var(--menu);
+}
+
+.book .book-summary ul.summary li a:hover {
+  background-color: var(--gray);
+  color: var(--main);
+}
+
+.book .book-summary .book-search {
+  color: #fff;
+}
+
+.book .book-summary .book-search input,
+.book .book-summary .book-search input:focus,
+.book .book-summary .book-search input:hover {
+  color: var(--menu);
+}
+
+.book .book-header,
+.book .book-summary {
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+}
+
+.btn:hover,
+.btn:focus,
+.btn.focus,
+.btn:active,
+.btn.active,
+.open > .dropdown-toggle.btn-success {
+  color: #ffffff;
+  background-color: var(--main);
+  border-color: var(--main);
+  border-radius: 6px;
+}
+
+.btn {
+  padding: 9px 14px;
+  font-size: 19px;
+  font-family: "Fira Sans", Helvetica, Arial, sans-serif;
+  line-height: 1.3333333;
+  border-radius: 6px;
+}
+
+.btn:focus,
+.btn:active,
+.btn.active {
+  outline: 0;
+  border-radius: 6px;
+}
+
+.btn-success:hover,
+.btn-success:focus,
+.btn-success.focus,
+.btn-success:active,
+.btn-success.active,
+.open > .dropdown-toggle.btn-success {
+  color: #ffffff;
+  background-color: var(--main);
+  border-color: var(--main);
+  border-radius: 6px;
+}
+
+.btn-lg,
+.btn-group-lg > .btn {
+  padding: 9px 14px;
+  font-size: 19px;
+  line-height: 1.3333333;
+  border-radius: 6px;
+}
+
+.csl-entry {
+  padding-left: 22px;
+  text-indent: -22px;
+}
+
+body {
+  font-size: 15px;
+}

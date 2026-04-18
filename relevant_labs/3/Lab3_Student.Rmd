@@ -1,0 +1,189 @@
+---
+title: Time series forecasting with classical Machine Learning algorithms
+author: Usue Mori
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H',fig.align="center")
+library(knitr)
+hook_output = knit_hooks$get('output')
+
+knit_hooks$set(document = function(x) {
+  sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+})
+
+
+# knit_theme$set("earendel")
+# knit_theme$set("print")
+ knitr::opts_chunk$set(linewidth=90, comment=NA,background='grey92') 
+ 
+
+```
+
+<br>
+
+In this tutorial we will learn to perform forecasts on time series using classical regression algorithms from machine learning. As an example, we are going to use a time series that represents the long-term interest rates in E.E.U.U from January 2007 to March 2018. [^1]
+
+[^1]: Time series extracted from <http://rwanjohi.rbind.io/2018/04/05/time-series-forecasting-using-lstm-in-r/>).
+
+```{r, warning=FALSE}
+interestsEEUU <- read.table("./Data/MEI_FIN_23092019161922426.csv", sep=",", header=TRUE)
+interestsEEUU <- ts(interestsEEUU[interestsEEUU$Country=="United States" 
+                    & interestsEEUU$Tipo=="IRLT", c("Value")], 
+                    start=2007, frequency=12)
+plot(interestsEEUU)
+```
+
+# Exercises
+
+-   In order to evaluate our models in a honest way, we will use a hold-out method, but we will respect the temporal order to the data. This means that we will use the first 70% data points (first 8 years) of the time series to train the models are the remaining 30% to test them.
+
+NOTE: The `caret` package proposes specific methods to generate train/test splits in time series. It also proposes ways to perform cross-validation with temporal data. For more information go to \url{https://otexts.com/fpp2/accuracy.html}.
+
+-   As we have seen in the theory, classical regression algorithms are not designed to perform predictions on time series, they are designed for tabular data. So, in order to apply them to temporal data, we must transform our time series into a tabular form, using a sliding window. Program a function in R that will format the data in R so that it is suitable for classical regression algorithms. This function will take two parameters as input: the time series and the size of the sliding window.
+
+```{r, warning=FALSE}
+library(caret)
+# 1. Transform time series to tabular form
+# This function dynamically creates feature columns (lags) and a target variable
+format_ts_to_tabular <- function(ts_data, window_size, step_ahead = 1) {
+  n <- length(ts_data)
+  num_rows <- n - window_size - step_ahead + 1
+  
+  X <- matrix(NA, nrow = num_rows, ncol = window_size)
+  Y <- numeric(num_rows)
+  
+  for (i in 1:num_rows) {
+    X[i, ] <- ts_data[i:(i + window_size - 1)]
+    Y[i] <- ts_data[i + window_size + step_ahead - 1]
+  }
+  
+  df <- data.frame(X, Y = Y)
+  colnames(df)[1:window_size] <- paste0("lag_", window_size:1)
+  return(df)
+}
+
+# Apply using a 1-year sliding window (w = 12 months)
+w <- 12
+tabular_data <- format_ts_to_tabular(interestsEEUU, window_size = w)
+
+# 2. Train/Test Split (70% train, 30% test) matching temporal order
+n_train <- floor(0.7 * nrow(tabular_data))
+train_data <- tabular_data[1:n_train, ]
+test_data <- tabular_data[(n_train + 1):nrow(tabular_data), ]
+
+# Prepare cross-validation setup for time series (caret)
+# We use createTimeSlices to respect chronological order natively
+time_slices <- createTimeSlices(y = train_data$Y, 
+                                initialWindow = 36, # Start with 3 years basic training
+                                horizon = 12,       # Predict 1 year forward in CV
+                                fixedWindow = FALSE)
+
+train_control <- trainControl(method = "timeslice",
+                              index = time_slices$train,
+                              indexOut = time_slices$test)
+```
+
+-   Apply different regression algorithms from the `caret` package to the formatted time series (use only the training set for fitting the models).
+
+```{r train_models, warning=FALSE, message=FALSE}
+# Train a Linear Regression model
+set.seed(42)
+lm_model <- train(Y ~ ., data = train_data, 
+                  method = "lm", 
+                  trControl = train_control)
+
+# Train a k-Nearest Neighbors model
+set.seed(42)
+knn_model <- train(Y ~ ., data = train_data, 
+                   method = "knn", 
+                   trControl = train_control,
+                   tuneGrid = expand.grid(k = 1:10)) # Search best k
+```
+
+-   Evaluate the models by using the test set and computing the RMSE and represent the predictions of the best model together with the time series.
+
+```{r evaluate_models, warning=FALSE, message=FALSE}
+# Predictions on test set
+lm_preds <- predict(lm_model, newdata = test_data)
+knn_preds <- predict(knn_model, newdata = test_data)
+
+# Compute Root Mean Squared Error
+rmse_lm <- RMSE(lm_preds, test_data$Y)
+rmse_knn <- RMSE(knn_preds, test_data$Y)
+
+cat("RMSE for Linear Regression:", rmse_lm, "\n")
+cat("RMSE for k-Nearest Neighbors:", rmse_knn, "\n")
+
+# Identify the best performance based on RMSE
+best_predicts <- if (rmse_lm < rmse_knn) lm_preds else knn_preds
+best_model_name <- if (rmse_lm < rmse_knn) "Linear Regression" else "kNN"
+
+# Plotting the series with predictions
+# Reconstruct the correct time indices for test set predictions
+original_time <- time(interestsEEUU)
+# The test set starts after `n_train` tabular rows, and shifts by `w` lags + 1 step ahead
+test_time <- original_time[(n_train + w + 1):length(original_time)]
+
+plot(interestsEEUU, type = "l", 
+     main = paste("1-Step Ahead Forecasting (", best_model_name, ")", sep=""), 
+     ylab = "Interest Rate", xlab = "Time", col = "black")
+lines(test_time, best_predicts, col = "red", lwd = 2)
+legend("topright", legend = c("True Value", "Predictions"), 
+       col = c("black", "red"), lty = 1, lwd = c(1, 2))
+```
+
+# Extra work
+
+-   Repeat the previous exercise to perform 3-step ahead predictions.
+
+```{r extra_work, warning=FALSE, message=FALSE}
+# 1. Format data for 3-steps ahead predicting
+step <- 3
+data_3step <- format_ts_to_tabular(interestsEEUU, window_size = w, step_ahead = step)
+
+# 2. Split into train & test
+n_train_3 <- floor(0.7 * nrow(data_3step))
+train_data_3 <- data_3step[1:n_train_3, ]
+test_data_3 <- data_3step[(n_train_3 + 1):nrow(data_3step), ]
+
+# Prepare time slices matching the split length
+slices_3 <- createTimeSlices(y = train_data_3$Y, 
+                             initialWindow = 36, horizon = 12, fixedWindow = FALSE)
+train_ctrl_3 <- trainControl(method = "timeslice",
+                             index = slices_3$train, indexOut = slices_3$test)
+
+# 3. Train models
+set.seed(42)
+lm_model_3 <- train(Y ~ ., data = train_data_3, method = "lm", trControl = train_ctrl_3)
+set.seed(42)
+knn_model_3 <- train(Y ~ ., data = train_data_3, method = "knn", trControl = train_ctrl_3)
+
+# 4. Evaluate Models
+lm_preds_3 <- predict(lm_model_3, newdata = test_data_3)
+knn_preds_3 <- predict(knn_model_3, newdata = test_data_3)
+
+rmse_lm_3 <- RMSE(lm_preds_3, test_data_3$Y)
+rmse_knn_3 <- RMSE(knn_preds_3, test_data_3$Y)
+
+cat("3-Step Ahead RMSE for Linear Regression:", rmse_lm_3, "\n")
+cat("3-Step Ahead RMSE for k-Nearest Neighbors:", rmse_knn_3, "\n")
+
+best_predicts_3 <- if (rmse_lm_3 < rmse_knn_3) lm_preds_3 else knn_preds_3
+best_model_name_3 <- if (rmse_lm_3 < rmse_knn_3) "Linear Regression" else "kNN"
+
+# 5. Visualizer
+test_time_3 <- original_time[(n_train_3 + w + step):length(original_time)]
+
+plot(interestsEEUU, type = "l", 
+     main = paste("3-Step Ahead Forecasting (", best_model_name_3, ")", sep=""), 
+     ylab = "Interest Rate", xlab = "Time", col = "black")
+lines(test_time_3, best_predicts_3, col = "red", lwd = 2)
+legend("topright", legend = c("True Value", "Predictions"), 
+       col = c("black", "red"), lty = 1, lwd = c(1, 2))
+```
+
+# References
+
+-   Kuhn, M. (2008). Caret package. Journal of Statistical Software, 28(5)

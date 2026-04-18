@@ -1,0 +1,246 @@
+---
+title: Time series forecasting with AR, MA, AR(I)MA models
+author: Usue Mori
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H',fig.align="center")
+library(knitr)
+hook_output = knit_hooks$get('output')
+
+knit_hooks$set(document = function(x) {
+  sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)
+})
+
+
+# knit_theme$set("earendel")
+# knit_theme$set("print")
+ knitr::opts_chunk$set(linewidth=90, comment=NA,background='grey92') 
+ 
+
+```
+
+<br>
+
+In this tutorial we will learnt to perform forecasts on time series using ARIMA models.
+
+# Simulation of ARIMA processes
+
+In R, we can simulate or generate time series that follow different ARIMA processes using the function `arima.sim` from package `forecast`. In the following lines, you can find some examples of usage of this function:
+
+-   To simulate and plot an AR(2) process of parameters 0.9 and -0.2:
+
+```{r, warning=FALSE, message=FALSE}
+library(forecast)
+set.seed(102)
+```
+
+```{r}
+ar2 <- arima.sim(model=list(ar=c(.9,-.5)), n=4000)
+ts.plot(ar2)
+```
+
+-   To simulate and plot an MA(2) process of parameters -0.7 and 0.1:
+
+```{r}
+ma2 <- arima.sim(model=list(ma=c(-.7,.1)), n=4000) 
+ts.plot(ma2)
+```
+
+-   To simulate an ARMA(2,2) process with AR parameters (0.4, 0.1) and MA parameters (0.5, 0.2):
+
+```{r}
+arma22 <- arima.sim(list(order=c(2, 0, 2), ar=c(0.4, 0.1), ma=c(0.5, 0.2)), n=4000)
+ts.plot(arma22)
+```
+
+-   Finally, let's simulate and ARIMA(1,1,1) with AR paramater 0.4 and MA parameter 0.5:
+
+```{r}
+arima111 <- arima.sim(list(order=c(1, 1, 1), ar=c(0.4), ma=c(0.5)), n=4000)
+ts.plot(arima111)
+```
+
+NOTE: If you write `arima.sim` in the R console, you can see the code of the `arima.sim` function and understand how these simulations are carried out by using the definitions of the different types of processes.
+
+# Fitting an AR(I)MA model to our series
+
+In this section we will learn to fit ARMA models to time series. As simple examples, we will use the series we have simulated in the previous section.
+
+Recall that in order to adjust a model of type AR, MA or ARMA, if necessary, we must first decompose the series in order to obtain a stationary time series. Additionally, once we obtain a stationary time series, if there is no temporal correlation between the observations (i.e. they are independent), it does not make sense to adjust a model of this type. We can analyze the temporal correlation between the observation by using the autocorrelation function, which analyzes the correlation between series $X_t$ and its lagged versions$X_{t-i}$. This is implemented in the `acf` function in R:
+
+```{r}
+acf(arma22)
+```
+
+In this plot, each vertical lines represents the autocorrelation at a certain lag $k$. We can see that lags 1 trhough 5 have a correlation that exceeds the confidence intervals, so we can conclude that there is some significant correlation between the observations of the series. In this context, it makes sense to adjust a temporal model to the data.
+
+## Fitting a MA model to our series
+
+We can fit a MA model to our data easily by using the `forecast` package. Additionally, in order to decide which $p$ parameter can be suitable, we can analyze the correlogram of the autocorrelation (ACF) function. This function, as stated previously, measures the correlation of a time series $X_t$ with its lagged versions $X_{t-i}$. It can be proved that the ACF of a MA($q$) process is 0 for all lags which are larger that $q$. So, if a MA($q$) is suitable to represent our series, the sample ACF values should be inside the confidence interval for all lags $k>q$, and it makes sense to choose $q$ as the smallest lag that fulfills this condition:
+
+```{r}
+acf(ma2)
+```
+
+In this case, the ACF correlogram would suggest a model of type MA(2) because after lag 2, all the autocorrelation values are inside the confidence interval. Note that this is not an exact method and will not always provide clear candidates for $q$, especially for real data. Once we have decided the order of the model, we can fit it to our data as follows:
+
+```{r}
+arima(ma2, order=c(0,0,2))
+```
+
+A more quantitative method to select the best parameters for our model is to use criteria based on goodness of fit, such as the Akaike Information Criterion (AIC) or the Bayesian Information Criterion (BIC). We can choose the parameter and fit the model automatically by using the `auto.arima` function:
+
+```{r}
+model.ma <- auto.arima(ma2, max.q=5, max.p=0, d=0, seasonal=FALSE)
+model.ma
+```
+
+We confirm that the MA(2) model is the model that best fits the data.
+
+## Fitting an AR model to our series
+
+Similar to what we have done for MA models, we can also fit AR models to our time series by using the `forecast` package. In order to choose a suitable $p$ parameter for the model, we can use the partial autocorrelation function (PACF). This function measures the correlation of a time series $X_t$ with its lagged versions $X_{t-i}$ after removing the effect of more recent lags $j<i$. The partial autocorrelation of an AR($p$) process is zero at lags greater than $p$. As such, if an AR($p$) process is suitable to model my series, the sample partial autocorrelation should not be significant for lags $k>p$. and it makes sense to choose $p$ as the smallest lag that fulfills this condition:
+
+```{r}
+pacf(ar2)
+```
+
+As expected, the correlogram suggests a model of type AR(2), which can be fitted as follows:
+
+```{r}
+arima(ar2, order=c(2,0,0))
+```
+
+Now, we repeat the process but using goodness of fit:
+
+```{r}
+model.ar <- auto.arima(ar2, max.q=0, max.p=5, d=0, seasonal=FALSE)
+model.ar
+```
+
+As can be seen, the same model has been chosen.
+
+## Fitting an AR(I)MA model to our series
+
+Finally, we can also fit models of type ARMA or ARIMA (for non stationary time series). For models with both $p, q> 0$ the ACF and PACF plots are not usually helpful. As such we will search among some candidate models using goodness of fit. For example, for the `arma11` model:
+
+```{r}
+model.arima <-auto.arima(arima111, max.q=5, max.p=5, seasonal=FALSE)
+model.arima
+```
+
+The method recommends an ARIMA(1,1,1) model. \bigskip
+
+# Analyzing the residuals of the model
+
+Before making any predictions with the fitted model, we must analyze the residual and see if they seem to follow a white noise process. The function `checkresiduals` analyzes the probability distribution and the ACF of the residuals and also performs the Ljung-Box test to check whether the residuals still contain any autocorrelation (H0: the data are independent). Additionally, we can also perform a Shapiro-Wilks test to check for normality.
+
+```{r}
+checkresiduals(model.arima)
+shapiro.test(model.arima$residuals)
+```
+
+As can be seen, all the autocorrelation values are inside the confidence intervals, which indicates that there is no evident autocorrelation. Additionally, the Ljung-Box test issues a high p-value which tells us that we can not discard independence. Finally, we can see in the histogram that the residuals seem to follow a normal distribution, and we reassure this with the high p-value of the Shapiro-Wilks test.
+
+# Making forecasts with a model of type AR(I)MA
+
+To perform predictions using the fitted model, we can use the `forecast` function of the package with the same name. We must indicate the number of data points in the future for which we want to make forecasts (`h` or forecasting horizon). For example, to predict 50 future data points for the `arima111` series using the fitted model we can proceed as follows:
+
+```{r}
+predictions <- forecast(model.arima, h = 50)
+predictions
+plot(predictions)
+```
+
+As can be seen, in addition to the point estimations we can also obtain the confidence intervals of the predictions.
+
+# Exercises
+
+In the file named Data/ParoCCAA.Rdata we have the unenployment rates in the period 1977-2009 in the different autonomous communities. Take the column which corresponds to Catalonia and answer the following questions:
+
+-   Check if the series is stationary and if it is not, difference it until you obtain a stationary time series (done in previous lab).
+
+    ```{r}
+    load("./Data/ParoCCAA.Rdata")
+    cat <- ParoCCAA$Cataluna
+    cat_ts <- ts(cat, start=1977, frequency = 4)
+    cat_diff <- ts(diff(cat_ts), start = 1977, frequency = 4)
+    cat_diff2 <- ts(diff(cat_diff), start = 1977, frequency = 4)
+    cat_diff3 <- ts(diff(cat_diff2), start = 1977, frequency = 4)
+
+    par(mfrow=c(2,2), mar=c(2,2,2,2))
+    plot(cat_ts)
+    plot(cat_diff)
+    plot(cat_diff2)
+    plot(cat_diff3)
+    ```
+
+    ```{r}
+    library(tseries)
+    kpss.test(cat_diff3) #if p value ca >0.05 then stationary
+    ```
+
+    KPSS test says all are stationary, but big spike at the end isnt. Only in diff3 it seems rather stationary, because spike is not as high and goes in both directions ==\> mean doesn't change
+
+-   Draw the PACF correlogram to select a candidate order of an AR model for the stationary time series obtained in the previous section. Then, use the `auto.arima` function to select $p$ automatically and fit a suitable AR model. What can you conclude?
+
+    ```{r}
+    pacf(cat_diff3)
+    ```
+
+    we should take AR(2), as values are above confidence interval until lag 2
+
+    ```{r}
+    model.ma <- auto.arima(cat_diff3, max.q=0, max.p=2, d=0, seasonal=FALSE)
+    model.ma
+    ```
+
+    auto arima concludes the same
+
+-   Draw the ACF correlogram to select a candidate order of an MA model for the stationary time series obtained in the previous section. Then, use the `auto.arima` function to select $q$ automatically and fit a suitable MA model. What can you conclude?
+
+```{r}
+acf(cat_diff3)
+model.ma <- auto.arima(cat_diff3, max.q=5, max.p=0, d=0, seasonal=FALSE)
+model.ma
+```
+
+-   Use `auto.arima` to select the most suitable ARMA model. Compare the $AIC_c$ values of the fitted AR, MA and ARMA models and select the most suitable.
+
+```{r}
+model.ma <- auto.arima(cat_diff3, max.q=5, max.p=5, d=0, seasonal=FALSE)
+model.ma
+```
+
+-   Use `auto.arima` to fit an ARIMA model to the initial time series (without differencing).
+
+```{r}
+model.ma <- auto.arima(cat_ts, max.q=5, max.p=5, seasonal=FALSE)
+model.ma
+checkresiduals(model.ma)
+shapiro.test(model.ma$residuals)
+```
+
+-   Analyze the residuals of this last chosen model. What can you conclude?
+
+    seems stationary, better than diff
+
+-   Calculate the predictions of the series for the following 5 trimesters and represent them graphically.
+
+    ```{r}
+    predictions <- forecast(model.ma, h = 5)
+    predictions
+    plot(predictions)
+    ```
+
+# Extra work
+
+-   Use the first 70% of the unenployment time series of Catalonia to fit an ARIMA model and the leftover 30% to evaluate the 1-step predictions. Use the RMSE to evaluate the predictions. See <https://otexts.com/fpp2/forecasting-on-training-and-test-sets.html> on information about how to do this in different ways. How is this procedure different to what we have done previously with the `forecast` function?
+
+# References
+
+-   P. J. Brockwell and R. A. Davis. Introduction to Time Series and Forecasting. Springer Verlag, 1996.
+-   P. S.P. Cowpertwait and A. V. Metcalfe. Introductory Time Series with R (Use R). Springer, 2009.
+-   R. H. Shumway and D. S. Stoffer. Time Series Analysis and Its Applications With R Examples. Springer Verlag, 2006.
