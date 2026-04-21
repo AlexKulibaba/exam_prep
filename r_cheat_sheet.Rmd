@@ -1,0 +1,847 @@
+---
+title: "ASTD – R Cheat Sheet for Exam Preparation"
+author: "Compiled from Labs 1, 2, 3 & 5"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+------------------------------------------------------------------------
+
+# 1. R Basics
+
+## 1.1 Variables & Assignment
+
+```{r}
+x <- 5                      # assign value
+x = 5                       # also works (less common in R)
+y <- "hello"                # character string
+z <- TRUE                   # logical
+```
+
+## 1.2 Vectors
+
+```{r}
+v <- c(1, 0, 2, 3, 1, 2)          # create vector
+length(v)                           # length of vector
+v[1]                                # first element (1-indexed!)
+v[2:4]                              # elements 2 through 4
+v[-1]                               # all except first element
+```
+
+## 1.3 Sequences & Repetition
+
+```{r}
+seq(from=1977, to=2001, by=0.25)    # sequence with step
+1:10                                 # shorthand for seq(1, 10, 1)
+rep(0, 34)                           # repeat 0, 34 times
+rep(c(1,2,3), length.out=20)        # repeat vector, trim/extend to length 20
+```
+
+## 1.4 Math Operations
+
+```{r}
+abs(-3)              # absolute value
+sqrt(16)             # square root
+sum(v)               # sum of vector
+mean(v)              # mean
+floor(7.8)           # round down → 7
+ceiling(7.2)         # round up → 8
+min(v); max(v)       # min / max
+```
+
+## 1.5 Data Frames & Matrices
+
+```{r}
+df <- data.frame(X = c(1,2,3), Y = c(4,5,6))   # create data.frame
+df$X                                              # access column
+df[1, ]                                           # first row
+df[, 2]                                           # second column
+nrow(df); ncol(df)                                # dimensions
+head(df)                                          # first 6 rows
+colnames(df)                                      # column names
+
+m <- matrix(NA, nrow=5, ncol=3)                   # create matrix
+m[2, 3] <- 99                                     # assign element
+```
+
+## 1.6 Apply Family
+
+```{r}
+sapply(list_of_things, function(x) sum(x))   # apply & simplify to vector
+lapply(1:5, function(i) i^2)                 # apply & return list
+tapply(values, groups, mean)                 # apply by group (used for seasonal means!)
+apply(matrix, 1, sum)                        # apply to rows (2 = columns)
+```
+
+## 1.7 Useful Utilities
+
+```{r}
+set.seed(42)                    # set random seed for reproducibility
+cat("RMSE:", 0.5, "\n")        # print formatted output
+print(x)                        # print object
+paste0("lag_", 1:5)             # concatenate strings (no separator)
+paste("a", "b", sep="-")        # concatenate with separator → "a-b"
+which.min(v)                    # index of minimum value
+which.max(v)                    # index of maximum value
+```
+
+## 1.8 Reading Data
+
+```{r}
+# Tab/space-separated files
+data <- read.table("file.txt")
+data <- read.table("file.txt", header=TRUE, sep=" ")
+
+# CSV files
+data <- read.table("file.csv", sep=",", header=TRUE)
+
+# Load .Rdata files
+load("file.Rdata")     # objects are loaded into the environment directly
+
+# Access columns
+data$ColumnName
+data[, 2]              # second column
+data[, c("col1","col2")]
+```
+
+------------------------------------------------------------------------
+
+# 2. Creating & Manipulating Time Series Objects
+
+## 2.1 Creating a `ts` Object
+
+```{r}
+# From a vector or column
+my_ts <- ts(data_vector, start=1977, frequency=4)   # quarterly data (start year)
+my_ts <- ts(data_vector, start=2007, frequency=12)  # monthly data
+my_ts <- ts(data_vector, start=1945, frequency=12)  # monthly data
+
+# frequency values:
+#   1  = annual
+#   4  = quarterly (trimestral)
+#   12 = monthly
+#   52 = weekly
+```
+
+## 2.2 Useful ts Functions
+
+```{r}
+start(my_ts)          # start time
+end(my_ts)            # end time
+frequency(my_ts)      # frequency
+time(my_ts)           # time index vector (useful for regression!)
+cycle(my_ts)          # seasonal cycle index (1,2,3,4,1,2,3,4,... for quarterly)
+window(my_ts, start=1980, end=1990)   # subset time series by time range
+length(my_ts)         # number of observations
+as.numeric(my_ts)     # convert ts to plain numeric vector
+as.ts(vector)         # convert vector to ts
+```
+
+## 2.3 Type Conversions
+
+```{r}
+as.numeric(CBF[1,])   # data.frame row → numeric vector
+as.ts(residuals)       # vector → ts object
+ts(vector, start=1977, frequency=4)   # vector → ts with time info
+```
+
+------------------------------------------------------------------------
+
+# 3. Plotting
+
+## 3.1 Basic Plotting
+
+```{r}
+plot(my_ts)                                          # simple time series plot
+plot(my_ts, main="Title", ylab="Y label", xlab="X")  # with labels
+plot(x, y, type="l")                                 # line plot
+ts.plot(my_ts)                                       # alternative ts plot
+
+# type options: "l"=line, "p"=points, "b"=both, "h"=histogram-like
+```
+
+## 3.2 Adding to Plots
+
+```{r}
+lines(time_vector, values, col="red", lwd=2)  # add line to existing plot
+abline(v=c(1977:2000), lty=2, col=3)          # vertical dashed lines
+abline(h=0, col="gray")                       # horizontal line
+legend("topright", legend=c("A","B"), col=c("black","red"), lty=1, lwd=c(1,2))
+```
+
+## 3.3 Multiple Plots
+
+```{r}
+par(mfrow=c(2,1))                # 2 rows, 1 col of plots
+par(mfrow=c(2,2), mar=c(2,2,2,2))  # 2x2 grid, small margins
+# After this, each plot() fills the next panel
+```
+
+------------------------------------------------------------------------
+
+# 4. Exploratory Analysis & Stationarity (Lab 1)
+
+## 4.1 Trend Estimation – Linear Regression (Least Squares)
+
+```{r}
+t <- time(my_ts)                             # get time index
+# or manually: t <- seq(from=1977.25, to=2001, by=0.25)
+
+# Linear trend
+model_lin <- lm(my_ts ~ t)
+
+# Polynomial trend (degree 2)
+model_poly2 <- lm(my_ts ~ poly(t, 2))
+
+# Polynomial trend (degree 3)
+model_poly3 <- lm(my_ts ~ poly(t, 3))
+
+# Access fitted values & residuals
+model_lin$fitted.values       # or model_lin$fitted
+model_lin$residuals
+
+# Plot trend + residuals
+par(mfrow=c(2,1))
+plot(t, my_ts, type="l", main="Trend estimation")
+lines(t, model_lin$fitted, col=3)
+plot(as.ts(model_lin$residuals), main="Residuals")
+```
+
+## 4.2 Trend Estimation – Moving Averages
+
+```{r}
+library(forecast)
+
+ma5 <- ma(my_ts, order=5)    # moving average window = 5
+ma7 <- ma(my_ts, order=7)    # moving average window = 7
+# Larger window → smoother trend, but lose more endpoints
+
+# Residuals after removing MA trend
+residuals <- ts(my_ts - ma5, start=1977, frequency=4)
+plot(residuals)
+```
+
+## 4.3 Trend Removal – Differencing
+
+```{r}
+diff1 <- diff(my_ts)             # first difference: removes linear trend
+diff2 <- diff(diff(my_ts))       # second difference: removes quadratic trend
+# Can also: diff(my_ts, differences=2)
+
+# Wrap result back as ts with correct time info
+diff1_ts <- ts(diff1, start=1977, frequency=4)
+```
+
+## 4.4 Stationarity Testing – KPSS Test
+
+```{r}
+library(tseries)
+
+kpss.test(my_ts)
+# H0: series is STATIONARY
+# p-value > 0.05 → cannot reject stationarity → series MAY BE stationary
+# p-value < 0.05 → reject H0 → series is NOT stationary
+
+kpss.test(model_lin$residuals)    # test residuals after detrending
+kpss.test(na.omit(decomp$random)) # test random component (remove NAs first!)
+```
+
+## 4.5 Seasonality Estimation – Seasonal Means Method
+
+```{r}
+# Step 1: compute mean per season
+seasonal_means <- tapply(my_ts, cycle(my_ts), mean)
+
+# Step 2: standardize (center to zero)
+standardized <- seasonal_means - mean(seasonal_means)
+
+# Step 3: replicate to full series length
+seasonal_component <- ts(rep(standardized, length.out=length(my_ts)),
+                         start=1980, frequency=4)
+
+# Step 4: residuals
+residuals <- my_ts - seasonal_component
+```
+
+## 4.6 Classical Decomposition (Trend + Seasonal + Random)
+
+```{r}
+# Additive decomposition: Y = Trend + Seasonal + Random
+decomp_add <- decompose(my_ts, type="additive")
+
+# Multiplicative decomposition: Y = Trend × Seasonal × Random
+decomp_mul <- decompose(my_ts, type="multiplicative")
+
+plot(decomp_add)    # plots all 4 components
+
+# Access individual components
+decomp_add$trend
+decomp_add$seasonal
+decomp_add$random       # residuals
+
+# Test stationarity of residuals (remove NA from edges!)
+kpss.test(na.omit(decomp_add$random))
+```
+
+------------------------------------------------------------------------
+
+# 5. ARIMA Modeling & Forecasting (Lab 2)
+
+## 5.1 Simulating ARIMA Processes
+
+```{r}
+library(forecast)
+set.seed(42)
+
+# AR(2) with params 0.9, -0.5
+ar2 <- arima.sim(model=list(ar=c(0.9, -0.5)), n=4000)
+
+# MA(2) with params -0.7, 0.1
+ma2 <- arima.sim(model=list(ma=c(-0.7, 0.1)), n=4000)
+
+# MA(1) with param 0.1  (as in test exam)
+ma1 <- arima.sim(model=list(ma=c(0.1)), n=1000)
+
+# ARMA(2,2) with AR=(0.4, 0.1), MA=(0.5, 0.2)
+arma22 <- arima.sim(list(order=c(2,0,2), ar=c(0.4,0.1), ma=c(0.5,0.2)), n=4000)
+
+# ARIMA(1,1,1) with AR=0.4, MA=0.5
+arima111 <- arima.sim(list(order=c(1,1,1), ar=c(0.4), ma=c(0.5)), n=4000)
+
+ts.plot(ar2)   # quick plot
+```
+
+## 5.2 ACF & PACF – Choosing Model Order
+
+```{r}
+# ACF → use to choose MA order q
+#   MA(q): ACF cuts off after lag q
+acf(my_ts)
+
+# PACF → use to choose AR order p
+#   AR(p): PACF cuts off after lag p
+pacf(my_ts)
+
+# RULE: values outside the blue dashed confidence bands are "significant"
+# Choose the SMALLEST lag after which ALL values are inside the bands
+```
+
+## 5.3 Fitting ARIMA Models
+
+```{r}
+# Manually specify order
+arima(my_ts, order=c(2, 0, 0))   # AR(2)
+arima(my_ts, order=c(0, 0, 2))   # MA(2)
+arima(my_ts, order=c(1, 1, 1))   # ARIMA(1,1,1)
+
+# Automatic model selection (uses AICc by default)
+model <- auto.arima(my_ts, seasonal=FALSE)
+
+# Restrict search space
+auto.arima(my_ts, max.p=5, max.q=0, d=0, seasonal=FALSE)  # AR only
+auto.arima(my_ts, max.p=0, max.q=5, d=0, seasonal=FALSE)  # MA only
+auto.arima(my_ts, max.p=5, max.q=5, d=0, seasonal=FALSE)  # ARMA
+auto.arima(my_ts, max.p=5, max.q=5, seasonal=FALSE)        # ARIMA (auto d)
+```
+
+## 5.4 Residual Analysis (Model Validation)
+
+```{r}
+# Combined check: ACF, histogram, Ljung-Box test
+checkresiduals(model)
+# Goal: residuals should look like WHITE NOISE
+#   → ACF values inside confidence bands (no autocorrelation)
+#   → Ljung-Box p-value > 0.05 (cannot reject independence)
+#   → Histogram roughly bell-shaped (normal)
+
+# Normality test
+shapiro.test(model$residuals)
+# H0: data is normally distributed
+# p-value > 0.05 → cannot reject normality → residuals MAY BE normal
+```
+
+## 5.5 Forecasting
+
+```{r}
+predictions <- forecast(model, h=5)    # predict next 5 time points
+predictions                             # shows point forecasts + confidence intervals
+plot(predictions)                       # plot with fan chart
+
+# Access components
+predictions$mean      # point forecasts
+predictions$lower     # lower CI bounds
+predictions$upper     # upper CI bounds
+```
+
+------------------------------------------------------------------------
+
+# 6. ML Regression for Time Series (Lab 3)
+
+## 6.1 Sliding Window – Transform TS to Tabular Data
+
+```{r}
+# PURPOSE: classical ML algorithms need tabular (X, Y) data
+# A sliding window creates lag features from the time series
+
+format_ts_to_tabular <- function(ts_data, window_size, step_ahead = 1) {
+  n <- length(ts_data)
+  num_rows <- n - window_size - step_ahead + 1
+  
+  X <- matrix(NA, nrow = num_rows, ncol = window_size)
+  Y <- numeric(num_rows)
+  
+  for (i in 1:num_rows) {
+    X[i, ] <- ts_data[i:(i + window_size - 1)]       # features = past values
+    Y[i]   <- ts_data[i + window_size + step_ahead - 1]  # target = future value
+  }
+  
+  df <- data.frame(X, Y = Y)
+  colnames(df)[1:window_size] <- paste0("lag_", window_size:1)
+  return(df)
+}
+
+# Usage
+w <- 12   # 12 months = 1-year window
+tabular_data <- format_ts_to_tabular(my_ts, window_size = w)
+# For 3-step ahead:
+tabular_data_3 <- format_ts_to_tabular(my_ts, window_size = w, step_ahead = 3)
+```
+
+## 6.2 Train/Test Split (Temporal Order!)
+
+```{r}
+# IMPORTANT: for time series, split preserving temporal order (no random shuffle!)
+n_train <- floor(0.7 * nrow(tabular_data))
+train_data <- tabular_data[1:n_train, ]
+test_data  <- tabular_data[(n_train + 1):nrow(tabular_data), ]
+```
+
+## 6.3 Time Series Cross-Validation with caret
+
+```{r}
+library(caret)
+
+# createTimeSlices: respects chronological order
+time_slices <- createTimeSlices(y = train_data$Y,
+                                initialWindow = 36,    # min training window
+                                horizon = 12,          # prediction horizon in CV
+                                fixedWindow = FALSE)   # growing window
+
+train_control <- trainControl(method = "timeslice",
+                               index = time_slices$train,
+                               indexOut = time_slices$test)
+```
+
+## 6.4 Training Models with caret
+
+```{r}
+library(caret)
+set.seed(42)
+
+# Linear Regression
+lm_model <- train(Y ~ ., data = train_data,
+                  method = "lm",
+                  trControl = train_control)
+
+# k-Nearest Neighbors (with hyperparameter search)
+knn_model <- train(Y ~ ., data = train_data,
+                   method = "knn",
+                   trControl = train_control,
+                   tuneGrid = expand.grid(k = 1:10))
+
+# Other methods: "svmRadial", "rf" (random forest), "ridge", "lasso", etc.
+```
+
+## 6.5 Prediction & Evaluation (RMSE)
+
+```{r}
+# Predict on test set
+lm_preds  <- predict(lm_model, newdata = test_data)
+knn_preds <- predict(knn_model, newdata = test_data)
+
+# RMSE (Root Mean Squared Error)
+rmse_lm  <- RMSE(lm_preds, test_data$Y)
+rmse_knn <- RMSE(knn_preds, test_data$Y)
+
+cat("RMSE LM:", rmse_lm, "\n")
+cat("RMSE KNN:", rmse_knn, "\n")
+
+# Pick best
+best_preds <- if (rmse_lm < rmse_knn) lm_preds else knn_preds
+```
+
+## 6.6 Plotting Predictions vs Actual
+
+```{r}
+# Reconstruct test time indices
+original_time <- time(my_ts)
+test_time <- original_time[(n_train + w + 1):length(original_time)]
+
+plot(my_ts, type="l", main="Forecasting", ylab="Value", xlab="Time")
+lines(test_time, best_preds, col="red", lwd=2)
+legend("topright", legend=c("True","Predicted"), col=c("black","red"), lty=1)
+```
+
+------------------------------------------------------------------------
+
+# 7. Distances for Time Series (Lab 5)
+
+## 7.1 Euclidean & Manhattan Distance
+
+```{r}
+library(proxy)
+
+# Between two time series (store as rows of a data.frame)
+data <- rbind(series1, series2)   # or: data <- df[c(1,2), ]
+
+dist(data, method="euclidean")
+dist(data, method="manhattan")
+
+# Manual calculation
+euclidean_dist <- sqrt(sum((Xt - Yt)^2))
+manhattan_dist <- sum(abs(Xt - Yt))
+```
+
+## 7.2 DTW Distance (Dynamic Time Warping)
+
+```{r}
+library(dtw)
+
+# Using dist() from proxy
+dist(data, method="dtw", step.pattern=symmetric1)
+
+# Using dtw() directly (gives more info)
+alignment <- dtw(x = as.numeric(series1),
+                 y = as.numeric(series2),
+                 keep.internals = TRUE)
+
+alignment$distance         # the DTW distance value
+
+# Visualization
+plot(alignment, type="twoway", off=2, match.lty=2, match.indices=20)
+plot(alignment, type="threeway")
+```
+
+## 7.3 DTW with Sakoe-Chiba Band
+
+```{r}
+alignment_banded <- dtw(x = as.numeric(series1),
+                        y = as.numeric(series2),
+                        step.pattern = symmetric1,
+                        window.type = "sakoechiba",
+                        window.size = 10,
+                        keep.internals = TRUE)
+
+plot(alignment_banded, type="density")   # shows allowed region
+```
+
+## 7.4 Count DTW Paths
+
+```{r}
+countPaths(alignment)    # number of optimal alignment paths
+```
+
+## 7.5 DTW Cost Matrix by Hand
+
+```{r}
+# Manual DTW cost matrix computation
+Xt <- c(1, 0, 2, 3, 1, 2)
+Yt <- c(0, 1, 2, 1, 0, 3)
+
+n <- length(Xt) + 1
+m <- length(Yt) + 1
+cost <- matrix(0, nrow = n, ncol = m)
+cost[, 1] <- Inf     # first column = infinity (except [1,1])
+cost[1, ] <- Inf     # first row = infinity (except [1,1])
+cost[1, 1] <- 0      # starting point
+
+for (i in 2:n) {
+  for (j in 2:m) {
+    cost[i, j] <- abs(Xt[i-1] - Yt[j-1]) + min(cost[i-1, j],
+                                                  cost[i, j-1],
+                                                  cost[i-1, j-1])
+  }
+}
+cost[n, m]   # final DTW distance
+```
+
+## 7.6 Pairwise Distance Matrices
+
+```{r}
+# All pairwise distances within one dataset
+d_euc <- dist(CBF, method="euclidean")
+d_dtw <- dist(CBF, method="dtw", step.pattern=symmetric1)
+
+# Pairwise distances between two matrices A and B
+distances <- matrix(NA, nrow=nrow(A), ncol=nrow(B))
+for (i in 1:nrow(A)) {
+  for (j in 1:nrow(B)) {
+    distances[i,j] <- dist(rbind(A[i,], B[j,]), method="euclidean")
+  }
+}
+```
+
+------------------------------------------------------------------------
+
+# 8. Clustering Time Series (Lab 5)
+
+## 8.1 K-Medoids (PAM) – Works with Any Distance
+
+```{r}
+library(cluster)
+
+# Input: precomputed distance matrix, diss=TRUE
+clus <- pam(d_euc, k=3, diss=TRUE)
+
+clus$clustering     # cluster assignments (vector of integers)
+clus$medoids        # medoid indices
+
+# With DTW distance
+clus_dtw <- pam(d_dtw, k=3, diss=TRUE)$clustering
+```
+
+## 8.2 Hierarchical Clustering
+
+```{r}
+# Input: distance matrix
+hc <- hclust(d_euc, method="complete")
+# method: "complete", "single", "average", "ward.D2"
+
+plot(hc)   # dendrogram → visually choose k
+
+# Cut dendrogram to get k clusters
+groups <- cutree(hc, k=3)
+```
+
+## 8.3 K-Means – Only with Euclidean / Feature-Based
+
+```{r}
+# Direct k-means (only works with raw features, Euclidean distance)
+result <- kmeans(feature_matrix, centers=3)
+result$cluster     # cluster assignments
+```
+
+## 8.4 Feature-Based Clustering with tsfeatures
+
+```{r}
+library(tsfeatures)
+
+# Convert data.frame rows to list of numeric vectors
+ts_list <- lapply(seq_len(nrow(df)), function(i) as.numeric(df[i,]))
+
+# Extract features
+features <- tsfeatures(ts_list)
+head(features)
+
+# Handle NAs
+features[is.na(features)] <- 0
+
+# Now cluster using k-means (features are tabular!)
+clusters <- kmeans(features, centers=3)$cluster
+```
+
+------------------------------------------------------------------------
+
+# 9. Evaluation
+
+## 9.1 F-Measure for Clustering (External Evaluation)
+
+```{r}
+# Custom F-measure function (given in Lab 5)
+F <- function(clus, true) {
+  tab1 <- 2 * table(clus, true)
+  tab2 <- outer(rowSums(tab1), colSums(tab1), `+`)
+  result <- 1 / length(true) * sum(colSums(tab1) * apply((tab1 / tab2), 2, max))
+  return(result)
+}
+
+# Usage: compare cluster labels vs ground truth
+F(cluster_result, true_labels)
+# Higher is better (max = 1)
+```
+
+## 9.2 RMSE (Regression / Forecasting)
+
+```{r}
+# Using caret
+library(caret)
+RMSE(predicted, actual)
+
+# Manual
+rmse <- sqrt(mean((predicted - actual)^2))
+```
+
+## 9.3 Stratified Sampling (caret)
+
+```{r}
+library(caret)
+
+# Stratified partitioning (preserves class proportions)
+indices <- createDataPartition(data$class_column, p=0.2, list=FALSE)
+subset_A <- data[indices, ]
+
+# Simple random sampling (does NOT preserve proportions)
+random_idx <- sample(1:nrow(data), size=0.2*nrow(data))
+```
+
+------------------------------------------------------------------------
+
+# 10. Quick Reference – Package Cheat Sheet
+
+| Package | Key Functions | Purpose |
+|----|----|----|
+| `base` | `ts()`, `diff()`, `plot()`, `lm()`, `acf()`, `pacf()` | Core R time series & regression |
+| `forecast` | `ma()`, `auto.arima()`, `forecast()`, `checkresiduals()` | ARIMA modeling & forecasting |
+| `tseries` | `kpss.test()` | Stationarity test |
+| `caret` | `train()`, `predict()`, `RMSE()`, `trainControl()` | ML training & evaluation |
+| `caret` | `createTimeSlices()`, `createDataPartition()` | Temporal CV & stratified splits |
+| `proxy` | `dist()` (extended methods) | Distance computation |
+| `dtw` | `dtw()`, `countPaths()` | DTW distance & alignment |
+| `cluster` | `pam()` | K-medoids clustering |
+| `stats` | `hclust()`, `cutree()`, `kmeans()`, `decompose()`, `shapiro.test()` | Clustering & decomposition |
+| `tsfeatures` | `tsfeatures()` | Feature extraction from TS |
+
+------------------------------------------------------------------------
+
+# 11. Common Exam Patterns
+
+## Pattern A: "Load data → create ts → explore → decompose"
+
+```{r}
+# 1. Load
+data <- read.table("file.txt")
+my_ts <- ts(data[, 2], start=1977, frequency=4)
+
+# 2. Plot
+plot(my_ts, main="Title")
+
+# 3. Estimate trend (choose one)
+t <- time(my_ts)
+model <- lm(my_ts ~ poly(t, 2))            # polynomial
+trend_ma <- ma(my_ts, order=5)              # moving average
+differenced <- diff(my_ts)                  # differencing
+
+# 4. Check stationarity of residuals
+library(tseries)
+kpss.test(model$residuals)
+
+# 5. Full decomposition
+decomp <- decompose(my_ts, type="additive")
+plot(decomp)
+kpss.test(na.omit(decomp$random))
+```
+
+## Pattern B: "Fit ARIMA → check residuals → forecast"
+
+```{r}
+library(forecast)
+
+# 1. Check stationarity, difference if needed
+diff_ts <- diff(my_ts)
+
+# 2. ACF/PACF to decide order (or use auto.arima)
+acf(diff_ts)
+pacf(diff_ts)
+
+# 3. Fit model
+model <- auto.arima(my_ts, seasonal=FALSE)
+
+# 4. Check residuals
+checkresiduals(model)
+shapiro.test(model$residuals)
+
+# 5. Forecast
+preds <- forecast(model, h=10)
+plot(preds)
+```
+
+## Pattern C: "Simulate → plot → identify"
+
+```{r}
+# Simulate a process
+sim <- arima.sim(model=list(ma=c(0.1)), n=1000)     # MA(1)
+sim <- arima.sim(model=list(ar=c(0.9, -0.5)), n=1000)  # AR(2)
+sim <- arima.sim(list(order=c(1,1,1), ar=0.4, ma=0.5), n=1000)  # ARIMA(1,1,1)
+
+ts.plot(sim)
+acf(sim)
+pacf(sim)
+```
+
+## Pattern D: "Sliding window → train ML → evaluate RMSE"
+
+```{r}
+library(caret)
+
+# 1. Transform to tabular
+tabular <- format_ts_to_tabular(my_ts, window_size=12)
+
+# 2. Temporal split
+n <- floor(0.7 * nrow(tabular))
+train <- tabular[1:n, ]
+test  <- tabular[(n+1):nrow(tabular), ]
+
+# 3. Train
+model <- train(Y ~ ., data=train, method="knn",
+               trControl=trainControl(method="timeslice",
+                                       index=createTimeSlices(train$Y, 36, 12)$train,
+                                       indexOut=createTimeSlices(train$Y, 36, 12)$test))
+
+# 4. Evaluate
+preds <- predict(model, newdata=test)
+RMSE(preds, test$Y)
+```
+
+## Pattern E: "Compute distances → cluster → evaluate"
+
+```{r}
+library(proxy); library(dtw); library(cluster)
+
+# 1. Distance matrix
+d <- dist(data_matrix, method="dtw", step.pattern=symmetric1)
+
+# 2. Cluster
+groups <- pam(d, k=3, diss=TRUE)$clustering
+
+# 3. Evaluate (if labels available)
+F(groups, true_labels)
+
+# Or hierarchical:
+hc <- hclust(d, method="complete")
+plot(hc)
+groups_hc <- cutree(hc, k=3)
+```
+
+------------------------------------------------------------------------
+
+# 12. Key Statistical Tests Summary
+
+| Test | Function | H₀ (Null Hypothesis) | Reject when |
+|----|----|----|----|
+| **KPSS** | `kpss.test(x)` | Series is **stationary** | p-value \< 0.05 |
+| **Ljung-Box** | `checkresiduals(m)` | Residuals are **independent** | p-value \< 0.05 |
+| **Shapiro-Wilk** | `shapiro.test(x)` | Data is **normally distributed** | p-value \< 0.05 |
+
+> **Remember**: In all tests, a **high p-value** means you **cannot reject** H₀ — it does NOT prove H₀ is true.
+
+------------------------------------------------------------------------
+
+# 13. Gotchas & Tips
+
+1.  **`na.omit()`** – Always use before `kpss.test()` on `decompose()$random` (has NAs at edges)
+2.  **`diss=TRUE`** – Required in `pam()` when passing a precomputed distance matrix
+3.  **`step.pattern=symmetric1`** – Always specify for DTW to match the method from class
+4.  **Temporal train/test split** – Never shuffle time series data! Always keep chronological order
+5.  **`set.seed()`** – Use before any randomized operation for reproducibility
+6.  **`cycle()`** returns the seasonal period index — use with `tapply()` for seasonal means
+7.  **`diff()` shortcut** – `diff(x, differences=2)` is equivalent to `diff(diff(x))`
+8.  **Feature clustering** – After `tsfeatures()`, the data is tabular → can use `kmeans()` directly

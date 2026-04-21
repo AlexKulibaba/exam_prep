@@ -241,32 +241,212 @@ S. Wagner and D. Wagner. (2007). Comparing Clusterings - Anoverview. Universitat
 
         ![](images/clipboard-3726543353.png){width="454"}
 
-        ```{r}
-        #create cost matrix of size 7x7
-        cost <- matrix(0, nrow = 7, ncol = 7)
-        print(cost)
-        ```
+    ```{r}
+    #create cost matrix of size 7x7
+    cost <- matrix(0, nrow = 7, ncol = 7)
+    cost[,1] = 10000
+    cost[1,] = 10000
+    cost[1,1] = 0
+
+    #main loop: for each entry distance plus min(up, left, up+left) from cost matrix
+    for (i in 2:nrow(cost)) {        # Outer loop: Rows
+      for (j in 2:ncol(cost)) {      # Inner loop: Columns/Entries
+        x <- cost[i-1,j]
+        y <- cost[i,j-1]
+        z <- cost[i-1,j-1]
+        cost[i,j] <- abs(Xt[i-1] - Yt[j-1]) + min(x,y,z)
+      }
+    }
+    cost
+    ```
 
     -   Repeat the exercise using functions `dtw` from package `dtw` in R. Did you obtain the same solution?
 
+    ```{r}
+    df <- data.frame(X_Series = Xt, Y_Series = Yt)
+    matrix <- dist(df, method="dtw", step.pattern = symmetric1)
+
+    # Perform alignment
+    alignment <- dtw(x=df$X_Series, y=df$Y_Series, keep.internals=TRUE)
+
+    # Display the optimal path
+    par(mfrow=c(1,2))
+    plot(alignment, type = "twoway", off=2, match.lty=2, match.indices=20)
+    plot(alignment, type = "threeway")
+    ```
+
     -   Calculate the number of possible paths using function `countPaths`.
+
+    ```{r}
+    countPaths(alignment)
+    ```
 
     -   If we repeat the operation using a Sakoe-Chiba band of $r=1$, do the results change?
 
+    ```{r}
+    alignment_windowed <- dtw(x=df$X_Series, y=df$Y_Series, step.pattern = symmetric1, 
+         window.type="sakoechiba", window.size=1, keep.internals=TRUE)
+
+    plot(alignment_windowed, type="density")
+    ```
+
     -   Calculate the obtained distances with the Euclidean and Manhattan distance (calculate them by hand and using R).
+
+    ```{r}
+    #control
+    eucl_control <- dist(df, method="euclidean")
+    manhattan_control <- dist(df, method="manhattan")
+
+    manhattan_dist <- sum(abs(Xt - Yt))
+    euclidean_dist <- sqrt(sum((Xt - Yt)^2))
+
+    print(manhattan_dist)
+    print(euclidean_dist)
+    print(manhattan_control)
+    print(eucl_control)
+    ```
 
 -   The database ECG200 (saved in file ECG200.txt), contains a set of time series that measure the electrical activity that happens during a heartbeat. The class variable (represented in the header by `V1`) takes two possible values: -1 if the heartbeat is normal y 1 if there is Myocardial Infarction.
 
     -   Randomly choose two time series and calculate the DTW, Euclidean and Manhattan distances between them.
+
+    ```{r}
+    raw <- read.table(file = "./Data/ECG200.txt")
+    set.seed(42) # For reproducibility
+    random_indices <- sample(1:nrow(raw), 2)
+
+    length(raw)
+
+    series1 <- as.numeric(raw[random_indices[1], -1]) #-1:exclude first entry
+    series2 <- as.numeric(raw[random_indices[2], -1])
+
+    df_ecg <- data.frame(
+      Time = 1:length(series1),
+      X = series1,
+      Y = series2
+    )
+
+    head(df_ecg)
+
+    ```
+
     -   Randomly choose a 20% of the time series (maintaining the proportion of the classes) and save them in a matrix ($A$). Choose another 10% (also maintaining the class proportions) and save them in matrix $B$.
+
+    ```{r}
+    library(caret)
+
+    #this does NOT do stratified sapling (keeping class proportions)
+    train_indices <- sample(1:nrow(raw), length(raw)*0.2)
+    test_indices <- sample(1:nrow(raw), length(raw)*0.1)
+
+    #This does
+    index_A <- createDataPartition(raw$V1, p = 0.2, list = FALSE)
+    matrix_A <- raw[index_A, -1]
+
+    matrix_B <- raw[createDataPartition(raw$V1, p = 0.1, list = FALSE), -1]
+    ```
+
     -   Calculate all the pairwise distances between the series in matrix $A$ using different distance measures.
+
+    ```{r}
+    #EUCLIDEAN
+    sum(dist(matrix_A, method="euclidean"))
+    #MANHATTAN
+    sum(dist(matrix_A, method="manhattan"))
+    #DTW
+    sum(dist(matrix_A, method="dtw", step.pattern = symmetric1))
+    ```
+
     -   Calculate all the pairwise distances between series in matrices $A$ and $B$ (one series from each matrix) using different distance measures.
+
+    ```{r}
+    n_A <- nrow(matrix_A)
+    n_B <- nrow(matrix_B)
+
+
+    distances <- list(
+      euclidean = matrix(NA, nrow = n_A, ncol = n_B), 
+      manhattan = matrix(NA, nrow = n_A, ncol = n_B),
+      dtw       = matrix(NA, nrow = n_A, ncol = n_B) # Added DTW if you need it!
+    )
+
+    for (i in 1:n_A) {
+      for (j in 1:n_B) {
+        distances$manhattan[i,j] <- dist(rbind(matrix_A[i,], matrix_B[j,]), method="manhattan")
+        distances$euclidean[i,j] <- dist(rbind(matrix_A[i,], matrix_B[j,]), method="euclidean")
+        distances$dtw[i,j] <-dist(rbind(matrix_A[i,], matrix_B[j,]), method="dtw", step.pattern = symmetric1)
+      }
+    }
+
+    total_sums <- sapply(distances, sum)
+    print(total_sums)
+    ```
 
 -   The `Trace` database from the UEA & UCR archive is a synthetic dataset designed to simulate instrumentation failures in a nuclear power plant. Each class is dedicated to a type of failure. The structure of the database is identical to the one used in the examples above: it is a `data.frame`, each row represents a time series, and the last column is dedicated to the class variable.
 
     -   Obtain basic information about the dataset, such as the number of classes, the length of the time series, etc. Graphically represent some of the time series. Can we discriminate between the different classes at simple sight? What type of features/distances do you think will be suitable to cluster this dataset?
 
+    feature based classification probably best, as diff classes have distinct features
+
+    -   
+
+    ```{r}
+
+    trace <- read.table("./Data/Trace.txt",dec=".", sep=";")
+    trace_type <- trace[, ncol(trace)]
+    trace[, ncol(trace)] <- NULL
+    trace_fixed <- as.data.frame(t(trace))
+
+    length(trace)
+    trace_classes <- unique(trace_type)
+
+    length(unique(trace_type))
+
+    par(mfrow=c(2,2))
+    plot(ts(trace_fixed$`1`))
+    plot(ts(trace_fixed$`2`))
+    plot(ts(trace_fixed$`3`))
+    plot(ts(trace_fixed$`4`))
+    plot(ts(trace_fixed$`5`))
+    ```
+
     -   Remove the class variable from the dataset and perform different clusterings using distance measures and features. Evaluate the results by visual inspection and by using the ground truth (the class variable) and choose the best solution, in your opinion.
+
+```{r}
+# --- Final Exercise: Clustering the Trace dataset ---
+
+# 1. Calculate the distance matrices
+# (Note: DTW might take a moment depending on your machine's processing power)
+d_trace_euc <- dist(trace, method="eu clidean")
+d_trace_dtw <- dist(trace, method="dtw", step.pattern=symmetric1)
+
+# Find the number of clusters (k) based on the ground truth
+k_trace <- length(unique(trace_type))
+
+# 2. Distance-based clustering (K-medoids via PAM)
+library(cluster)
+clus_trace_euc <- pam(d_trace_euc, k=k_trace, diss=TRUE)$clustering
+clus_trace_dtw <- pam(d_trace_dtw, k=k_trace, diss=TRUE)$clustering
+
+# 3. Feature-based clustering
+library(tsfeatures)
+# Convert the trace dataframe to a list of numeric vectors for tsfeatures
+trace_list <- lapply(seq_len(nrow(trace)), function(i) as.numeric(trace[i,]))
+
+# Extract features
+trace_features <- tsfeatures(trace_list)
+
+# Impute any NAs that tsfeatures might generate with 0 (safe fallback for missing feature derivations)
+trace_features[is.na(trace_features)] <- 0
+
+# Apply K-means to the extracted features
+clus_trace_feat <- kmeans(trace_features, centers=k_trace)$cluster
+
+# 4. Evaluation using the F-measure function defined earlier in the tutorial
+cat("F-measure for Euclidean (K-medoids):", F(clus_trace_euc, trace_type), "\n")
+cat("F-measure for DTW (K-medoids):      ", F(clus_trace_dtw, trace_type), "\n")
+cat("F-measure for Features (K-means):   ", F(clus_trace_feat, trace_type), "\n")
+```
 
 # Extra work
 
@@ -275,6 +455,42 @@ S. Wagner and D. Wagner. (2007). Comparing Clusterings - Anoverview. Universitat
 NOTE: This package has been archived, so in order to install it you will have to do it from source, or using package the \emph{remotes} package.
 
 -   Additional features for time series are implemented in other packages, and package `theft` makes a compilation of them. Take a look at the contents of this package and try to use other types of features to improve your results.
+
+# More Content
+
+TSC:
+
+-   model based\
+    ▶ Good results with\
+    adequate models\
+    ▶ What model? Does it exist?
+
+-   Feature based\
+    ▶ Representation does not\
+    depend on the number of\
+    training series.\
+    ▶ Interpretable.\
+    ▶ What features?
+
+-   Distance based\
+    ![](images/clipboard-3057022297.png)
+
+k-NN: intuitive and good results with large datasets but computationslly expensive and not clear which distance
+
+distance based global freatures: any classifier can be used, but representation depends on training set size and high computational cost
+
+local distance features: good shapelets can lead to very good results, and interpretsble but hard to find good shapelets and comp expensivr
+
+kernels:\
+▶ Algorithms such as SVM or GP can be used.\
+▶ Difficulties in obtaining/proving the semi-definiteness of the kernels.\
+▶ Theoretical properties are lost with indefinite kernels.
+
+EARLY CLASSIFICATION OF TIME SERIES: balance between earlyness and accuracy
+
+![](images/clipboard-1330829064.png)
+
+![](images/clipboard-878800169.png)
 
 # References
 

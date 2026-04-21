@@ -1,0 +1,228 @@
+---
+title: "test exam solution"
+output: html_document
+date: "2026-04-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Exercise 1.5
+
+```{r}
+ma2 <- arima.sim(model=list(ma=c(.1)), n=1000, sd=0.1) 
+ts.plot(ma2)
+```
+
+Exercise 2.1
+
+```{r}
+set.seed(300)
+```
+
+```{r}
+load("./Data/series.Rdata")
+ts <- ts(series)
+plot(ts)
+```
+
+I would say that the TS is stationary, as it seems to have a constant mean and variance throughout all 100 time steps.
+
+2.2 Check it using kpss
+
+```{r}
+library(tseries)
+kpss.test(ts)
+```
+
+we see that the p-value is greater than 0.05, making it highly likely that the ts is stationary
+
+2.3 we look at the acf
+
+```{r}
+acf(ts)
+```
+
+MA(3) seems to be right, as the series seems to have autocorrelation with the 3 previous values, as the first three lags in the acf function cross the threshold. The small spikes at 15, 21 and 30 are a little above threshold, but are not relevant for the MA funciton
+
+2.4
+
+```{r}
+ma2 <- arima(series, order=c(0,0,2))
+print(ma2)
+```
+
+our model has three parameters:\
+theta1 = ma1 = 0,55\
+theta2 = ma2 = 0,36\
+c = intercept = 0,061
+
+aic is 2892.11
+
+2.5
+
+```{r}
+predictions <- forecast(ma2, h = 5)
+
+plot(series)
+lines(predictions$mean, col =2)
+```
+
+2.6
+
+```{r}
+format_ts_to_tabular <- function(ts_data, window_size, step_ahead = 1) {
+  n <- length(ts_data)
+  num_rows <- n - window_size - step_ahead + 1
+  
+  X <- matrix(NA, nrow = num_rows, ncol = window_size)
+  Y <- numeric(num_rows)
+  
+  for (i in 1:num_rows) {
+    X[i, ] <- ts_data[i:(i + window_size - 1)]
+    Y[i] <- ts_data[i + window_size + step_ahead - 1]
+  }
+  
+  df <- data.frame(X, Y = Y)
+  colnames(df)[1:window_size] <- paste0("lag_", window_size:1)
+  return(df)
+}
+
+```
+
+```{r}
+library(randomForest)
+df <- data.frame(embed(series, 6))
+rf_model <- randomForest(X1 ~ ., data = df)
+
+rf_preds <- numeric(10)
+window <- tail(series, 5)
+
+for(i in 1:10) {
+  # Predict the next single step
+  # (We reverse the window so the most recent data point is first, matching our training data)
+  rf_preds[i] <- predict(rf_model, newdata = setNames(data.frame(t(rev(window))), names(df)[-1]))
+  
+  # Slide the window: drop the oldest point, add the brand new prediction
+  window <- c(window[-1], rf_preds[i]) 
+}
+
+
+ts.plot(c(series,rf_preds))
+lines(length(series) + 1:10, rf_preds, col=2)
+     
+
+
+```
+
+3.2 calculate the distance autotically and double check
+
+```{r}
+load("./Data/tsdatabase.RData")
+
+print(tsdatabase[1,])
+print(tsdatabase[2,])
+
+series1 <- tsdatabase[1,]
+series2 <- tsdatabase[2,]
+
+cost <- matrix(0, nrow = 5, ncol = 5)
+cost[,1] = 10000
+cost[1,] = 10000
+cost[1,1] = 0
+
+#main loop: for each entry distance plus min(up, left, up+left) from cost matrix
+for (i in 2:nrow(cost)) {        # Outer loop: Rows
+  for (j in 2:ncol(cost)) {      # Inner loop: Columns/Entries
+    x <- cost[i-1,j]
+    y <- cost[i,j-1]
+    z <- cost[i-1,j-1]
+    cost[i,j] <- abs(series1[i-1] - series2[j-1]) + min(x,y,z)
+  }
+}
+cost
+```
+
+3.3.
+
+we first get the dtw distances, and do the clustering usinf pam
+
+```{r}
+data <- tsdatabase
+d_dtw <- dist(data, method = "dtw", step.pattern = symmetric1)
+```
+
+```{r}
+k <- 3   # adapt
+
+clus_dtw <- pam(d_dtw, k = k, diss = TRUE)
+
+groups_dtw_kmedioids <- clus_dtw$clustering
+
+print(groups_dtw_kmedioids)
+
+```
+
+reuse the distances to do the hierarchical clustering
+
+```{r}
+#DTW
+hc_dtw <- hclust(d_dtw,  method="complete")
+
+plot(hc_dtw)
+
+groups_hc_dtw <-cutree(hc_dtw, k=3)
+```
+
+```{r}
+# tsfeatures() needs a LIST of numeric vectors, not a data.frame!
+series_list <- lapply(seq_len(nrow(data)), function(i) as.numeric(data[i, ]))
+
+feats <- tsfeatures(series_list)
+head(feats)
+
+# REMOVE features with NA values (common exam requirement!)
+feats <- feats[, colSums(is.na(feats)) == 0]
+
+# k-means (works now because features form a Euclidean space)
+groups_feat_km <- kmeans(feats, centers = 3)$cluster
+
+# Or hierarchical on feature vectors
+d_feat <- dist(feats, method = "euclidean")
+hc_feat <- hclust(d_feat, method = "complete")
+groups_feat_hc <- cutree(hc_feat, k = 3)
+
+print(groups_feat_km)
+```
+
+```{r}
+print(groups_feat_km)
+print(groups_dtw)
+print(groups_hc_dtw)
+print(ground_truth)
+
+
+ground_truth <- c(2, 3, 1, 1, 2, 3, 3, 2, 3, 2, 1, 1)
+
+par(mfrow=c(2,1), mar=c(2,2,2,2))
+
+
+
+```
+
+```{r}
+# Custom F-measure function (given in Lab 5)
+F <- function(clus, true) {
+  tab1 <- 2 * table(clus, true)
+  tab2 <- outer(rowSums(tab1), colSums(tab1), `+`)
+  result <- 1 / length(true) * sum(colSums(tab1) * apply((tab1 / tab2), 2, max))
+  return(result)
+}
+
+# Usage: compare cluster labels vs ground truth
+F(groups_feat_km, ground_truth)
+F(groups_dtw, ground_truth)
+F(groups_hc_dtw, ground_truth)
+# Higher is better (max = 1)
+```

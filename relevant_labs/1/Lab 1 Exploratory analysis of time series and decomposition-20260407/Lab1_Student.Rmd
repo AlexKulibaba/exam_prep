@@ -312,6 +312,116 @@ plot(descomposition2)
 
 yes, results do look stationary as no autocorellation in random
 
+# Theoretical Properties
+
+## White noise
+
+$$E(\epsilon_t) = 0, \quad \mathrm{Var}(\epsilon_t) = \sigma^2, \quad \mathrm{Cov}(\epsilon_t, \epsilon_s) = 0 \text{ for } t \neq s$$
+
+## MA(1): $Y_t = \epsilon_t + \theta \epsilon_{t-1}$
+
+$$E(Y_t) = 0, \quad \gamma(0) = \sigma^2(1+\theta^2), \quad \gamma(1) = \theta\sigma^2, \quad \gamma(k \geq 2) = 0$$ $$\rho(1) = \frac{\theta}{1+\theta^2}$$
+
+## MA(q): general
+
+$$\gamma(k) = \begin{cases} \sigma^2 \sum_{i=0}^{q-k} \theta_i \theta_{i+k} & 0 \leq k \leq q \\ 0 & k > q \end{cases}$$
+
+(with $\theta_0 = 1$). ACF **cuts off** after lag $q$.
+
+## AR(1): $Y_t = \phi Y_{t-1} + \epsilon_t$ (stationary if $|\phi| < 1$)
+
+$$E(Y_t) = 0, \quad \gamma(0) = \frac{\sigma^2}{1-\phi^2}, \quad \gamma(k) = \phi^{|k|} \gamma(0)$$
+
+ACF **decays geometrically**; PACF **cuts off** after lag 1.
+
+# Key Covariance Identities
+
+$$\mathrm{Cov}(aX + bY,\ cZ + dW) = ac\,\mathrm{Cov}(X,Z) + ad\,\mathrm{Cov}(X,W) + bc\,\mathrm{Cov}(Y,Z) + bd\,\mathrm{Cov}(Y,W)$$
+
+$$\mathrm{Var}(aX + bY) = a^2\mathrm{Var}(X) + b^2\mathrm{Var}(Y) + 2ab\,\mathrm{Cov}(X,Y)$$
+
+$$\mathrm{Cov}(X, X) = \mathrm{Var}(X), \quad \mathrm{Cov}(X, c) = 0$$
+
+**Strategy for MA covariance problems:**
+
+1.  Write $Y_t$ and $Y_{t-k}$ explicitly in terms of $\epsilon$'s
+2.  Expand $\mathrm{Cov}(Y_t, Y_{t-k})$ bilinearly into pairs
+3.  Keep only pairs with matching time indices (others = 0)
+4.  Each surviving term contributes $\sigma^2 \times$ (product of coefficients)
+
+# Weak Stationarity — Definition
+
+A stochastic process $\{X_t\}$ is **weakly (second-order) stationary** if for all $t$:
+
+1.  **Constant mean:** $E(X_t) = \mu$.
+2.  **Constant (finite) variance:** $\mathrm{Var}(X_t) = \sigma_X^2 < \infty$.
+3.  **Covariance depends only on the lag:** $\mathrm{Cov}(X_t, X_{t-\tau}) = \gamma_\tau$ (depends on $\tau$, not on $t$).
+
+**General proof template (works for AR, MA, ARMA):**
+
+1.  Write the process definition.
+2.  Apply $E(\cdot)$ to both sides → get the mean.
+3.  Apply $\mathrm{Var}(\cdot)$ to both sides (careful with cross-terms!) → get the variance.
+4.  Compute $\mathrm{Cov}(Y_t, Y_{t-\tau})$ for $\tau = 1, 2, \ldots$ by direct multiplication and expectation.
+5.  Use white-noise properties: $E(\epsilon_t)=0$, $\mathrm{Var}(\epsilon_t)=\sigma^2$, $\mathrm{Cov}(\epsilon_t,\epsilon_s)=0$ for $t\neq s$, and $\mathrm{Cov}(\epsilon_t, X_s)=0$ for $s<t$.
+
+# Proof of Weak Stationarity of AR(1)
+
+The AR(1) process is $$X_t = \theta_0 + \theta_1 X_{t-1} + \epsilon_t, \qquad \epsilon_t \sim WN(0, \sigma^2).$$
+
+## Step 1 — Constant mean
+
+Assume $E(X_t) = E(X_{t-1}) = \mu$. Taking expectations: $$E(X_t) = \theta_0 + \theta_1 E(X_{t-1}) + 0 \;\Longrightarrow\; \mu = \theta_0 + \theta_1 \mu$$
+
+$$\boxed{\;\mu = \dfrac{\theta_0}{1-\theta_1}\;}\qquad (\theta_1 \neq 1)$$
+
+## Step 2 — Constant variance
+
+Assume $\mathrm{Var}(X_t) = \mathrm{Var}(X_{t-1})$. Since $\epsilon_t$ is independent of $X_{t-1}$: $$\mathrm{Var}(X_t) = \theta_1^2\,\mathrm{Var}(X_{t-1}) + \sigma^2 \;\Longrightarrow\; \mathrm{Var}(X_t)(1-\theta_1^2) = \sigma^2$$
+
+$$\boxed{\;\mathrm{Var}(X_t) = \dfrac{\sigma^2}{1-\theta_1^2}\;}$$
+
+For the variance to be **finite and positive** we need $1-\theta_1^2 > 0$, i.e. $$\boxed{\;|\theta_1| < 1\;}$$ This is the **stationarity condition** for AR(1).
+
+## Step 3 — Covariance depends only on the lag
+
+Subtracting the mean (using $\theta_0 = \mu(1-\theta_1)$): $$X_t - \mu = \theta_1(X_{t-1} - \mu) + \epsilon_t$$
+
+Multiply by $(X_{t-\tau} - \mu)$ and take expectations, with $\tau \geq 1$: $$\gamma_\tau = \theta_1\, E[(X_{t-1}-\mu)(X_{t-\tau}-\mu)] + E[\epsilon_t (X_{t-\tau}-\mu)]$$
+
+The second term is 0 because $\epsilon_t$ is independent of the past. So: $$\gamma_\tau = \theta_1\, \gamma_{\tau-1}$$
+
+Recursion: $$\boxed{\;\gamma_\tau = \theta_1^{\,\tau}\, \gamma_0 = \theta_1^{\,\tau}\, \dfrac{\sigma^2}{1-\theta_1^2}\;}$$
+
+Depends only on $\tau$ → **AR(1) is weakly stationary iff** $|\theta_1| < 1$.
+
+**Summary table (AR(1)):**
+
+| Quantity | Formula | Condition |
+|------------------------|------------------------|------------------------|
+| Mean $\mu$ | $\theta_0 / (1-\theta_1)$ | $\theta_1 \neq 1$ |
+| Variance $\gamma_0$ | $\sigma^2 / (1-\theta_1^2)$ | $\|\theta_1\|<1$ |
+| Autocov. $\gamma_\tau$ | $\theta_1^\tau \sigma^2 / (1-\theta_1^2)$ | $\|\theta_1\|<1$ |
+| Autocorr. $\rho_\tau$ | $\theta_1^\tau$ | $\|\theta_1\|<1$ |
+
+# Worked Example: MA(1) with $\theta = 0.1$, $\sigma = 0.1$
+
+Process: $Y_t = \epsilon_t + \theta \epsilon_{t-1}$ with $\epsilon_t \sim N(0, \sigma^2)$, $\sigma^2 = 0.01$, $\theta = 0.1$.
+
+> MA(q) with finite $q$ is **always** weakly stationary — no parameter restriction needed.
+
+**1. Expectation:** $$E(Y_t) = E(\epsilon_t) + \theta E(\epsilon_{t-1}) = 0 + 0 = \boxed{0}$$
+
+**2. Variance** (independence of $\epsilon_t, \epsilon_{t-1}$): $$\mathrm{Var}(Y_t) = \sigma^2 + \theta^2\sigma^2 = \sigma^2(1+\theta^2) = 0.01 \cdot 1.01 = \boxed{0.0101}$$
+
+**3. Covariance at lag 1:** $$\mathrm{Cov}(Y_t, Y_{t-1}) = \mathrm{Cov}(\epsilon_t + \theta\epsilon_{t-1},\; \epsilon_{t-1} + \theta\epsilon_{t-2})$$
+
+Expand bilinearly — only $\mathrm{Cov}(\epsilon_{t-1}, \epsilon_{t-1}) = \sigma^2$ survives: $$= \theta\sigma^2 = 0.1 \cdot 0.01 = \boxed{0.001}$$
+
+**4. Covariance at lag 2:** $$\mathrm{Cov}(Y_t, Y_{t-2}) = \mathrm{Cov}(\epsilon_t + \theta\epsilon_{t-1},\; \epsilon_{t-2} + \theta\epsilon_{t-3})$$ All $\epsilon$ indices differ → every term is 0: $$\boxed{\mathrm{Cov}(Y_t, Y_{t-2}) = 0}$$
+
+**General MA(1) rule:** $\gamma_\tau = 0$ for $|\tau| \geq 2$. This is why ACF cuts off after lag $q$ for MA(q).
+
 # Extra work
 
 -   In these examples we have perfomed the classical decomposition using the `decompose` method. This method is explained in depth in \url{https://otexts.com/fpp2/classical-decomposition.html}. Read the information contained there carefully and find out what are the disadvantages or limitations of this method. In addition, find out about other decomposition methods and try to apply them to the series of unenployment in Catalonia.

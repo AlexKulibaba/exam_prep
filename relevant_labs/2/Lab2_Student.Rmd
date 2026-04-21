@@ -38,6 +38,7 @@ set.seed(102)
 
 ```{r}
 ar2 <- arima.sim(model=list(ar=c(.9,-.5)), n=4000)
+
 ts.plot(ar2)
 ```
 
@@ -233,6 +234,7 @@ shapiro.test(model.ma$residuals)
     predictions <- forecast(model.ma, h = 5)
     predictions
     plot(predictions)
+    foreca
     ```
 
 # Extra work
