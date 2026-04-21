@@ -385,6 +385,8 @@ For the variance to be **finite and positive** we need $1-\theta_1^2 > 0$, i.e. 
 
 ## Step 3 — Covariance depends only on the lag
 
+$Cov(A, B) = E((A - E(A)) \cdot (B - E(B)))$
+
 Subtracting the mean (using $\theta_0 = \mu(1-\theta_1)$): $$X_t - \mu = \theta_1(X_{t-1} - \mu) + \epsilon_t$$
 
 Multiply by $(X_{t-\tau} - \mu)$ and take expectations, with $\tau \geq 1$: $$\gamma_\tau = \theta_1\, E[(X_{t-1}-\mu)(X_{t-\tau}-\mu)] + E[\epsilon_t (X_{t-\tau}-\mu)]$$
